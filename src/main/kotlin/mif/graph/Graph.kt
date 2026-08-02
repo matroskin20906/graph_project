@@ -5,25 +5,18 @@ import mif.graph.geometry.PreciseDistanceCalculator
 import mif.graph.osmdata.OsmData
 import mif.graph.osmdata.oneway
 import java.util.LinkedList
-import java.util.Queue
 
 interface Graph {
     val vertices: List<Vertex>
     val edges: List<Edge>
-
-    // dfs(), bfs(), bridges()
 }
 
 interface WeightedGraph : Graph {
     override val edges: List<WeightedEdge>
-
-    // kruskals(), dijkstra()
 }
 
 interface GeometricalWeightedGraph : WeightedGraph {
     val coordinates: Map<Long, Node>
-
-    // dijkstra() from any point to any point
 }
 
 sealed interface Edge {
@@ -124,6 +117,10 @@ private fun dfsRec(adj: Map<Long, List<Long>>, visited: MutableSet<Long>, start:
     }
 }
 
+fun Graph.bridges(): List<Edge> {
+    TODO()
+}
+
 /** @throws IllegalVertex **/
 fun WeightedGraph.dijkstra(start: Long, end: Long): List<Edge> {
     val vertices = vertices.associateBy { it.id }
@@ -135,7 +132,15 @@ fun WeightedGraph.dijkstra(start: Long, end: Long): List<Edge> {
         throw IllegalVertex(start)
     }
 
-    return emptyList()
+    TODO()
+}
+
+fun WeightedGraph.kruskals(): List<WeightedEdge> {
+    TODO()
+}
+
+fun GeometricalWeightedGraph.dijkstra(start: Node, end: Node): List<Edge> {
+    TODO()
 }
 
 class RoadGraph(
