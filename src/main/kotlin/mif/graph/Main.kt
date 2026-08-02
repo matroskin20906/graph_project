@@ -9,18 +9,20 @@ import de.topobyte.osm4j.core.model.iface.OsmNode
 import de.topobyte.osm4j.core.model.iface.OsmRelation
 import de.topobyte.osm4j.core.model.iface.OsmWay
 import de.topobyte.osm4j.pbf.seq.PbfIterator
+import de.topobyte.osm4j.pbf.seq.PbfWriter
 import mif.graph.osmdata.OsmData
 import mif.graph.osmdata.nodeIds
 import java.io.FileInputStream
+import java.io.FileOutputStream
 
 class GraphProcessor : CliktCommand() {
     private val input by option("-i", "--input").required()
-    private val output by option("-o", "--output")
+    private val output by option("-o", "--output").required()
 
     override fun run() {
-        val graph = OsmRoadGraph.from(RoutingOsmFileReader().read(input))
-        println(graph.vertices)
-        println(graph.edges)
+        val data = RoutingOsmFileReader().read(input)
+        data.calcBridges()
+        data.write(PbfWriter(FileOutputStream(output), true))
     }
 }
 

@@ -27,13 +27,31 @@ sealed interface Edge {
 data class SimpleEdge(
     override val from: Long,
     override val to: Long
-) : Edge
+) : Edge {
+    override fun equals(other: Any?) =
+        other != null && other is SimpleEdge && ((from == other.from && to == other.to) || (from == other.to && to == other.from))
+
+    override fun hashCode(): Int {
+        var result = from.hashCode()
+        result = 31 * result + to.hashCode()
+        return result
+    }
+}
 
 data class WeightedEdge(
     override val from: Long,
     override val to: Long,
     val weight: Double
-) : Edge
+) : Edge {
+    override fun equals(other: Any?) =
+        other != null && other is SimpleEdge && ((from == other.from && to == other.to) || (from == other.to && to == other.from))
+
+    override fun hashCode(): Int {
+        var result = from.hashCode()
+        result = 31 * result + to.hashCode()
+        return result
+    }
+}
 
 data class Vertex(val id: Long) {
     override fun toString() = "$id"
@@ -135,6 +153,7 @@ fun WeightedGraph.dijkstra(start: Long, end: Long): List<Edge> {
     TODO()
 }
 
+// here we should think about graph as unoriented
 fun WeightedGraph.kruskals(): List<WeightedEdge> {
     TODO()
 }
