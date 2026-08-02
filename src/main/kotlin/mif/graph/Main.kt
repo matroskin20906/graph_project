@@ -17,7 +17,7 @@ class GraphProcessor : CliktCommand() {
     private val output by option("-o", "--output")
 
     override fun run() {
-        println(StandardOsmFileReader().read(input))
+        println(RoutingOsmFileReader().read(input))
     }
 }
 
@@ -40,6 +40,63 @@ class StandardOsmFileReader : OsmFileReader {
         }
 
         return OsmData(nodes, ways, relations)
+    }
+}
+
+class RoutingOsmFileReader : OsmFileReader {
+    override fun read(file: String): OsmData {
+        val ways = mutableListOf<OsmWay>()
+        val neededNodes = mutableSetOf<Long>()
+        PbfIterator(FileInputStream(file), true).forEach { container ->
+            when (container.type) {
+                EntityType.Way -> {
+                    val way = container.entity as OsmWay
+                    if (way.highwayType() != null) {
+                        ways.add(way)
+                        neededNodes.addAll(way.nodeIds())
+                    }
+                }
+                else -> {}
+            }
+        }
+
+        val nodes = mutableListOf<OsmNode>()
+        val relations = mutableListOf<OsmRelation>()
+        PbfIterator(FileInputStream(file), true).forEach { container ->
+            when (container.type) {
+                EntityType.Node -> {
+                    val node = container.entity as OsmNode
+                    if (node.id in neededNodes) {
+                        nodes.add(node)
+                    }
+                }
+                EntityType.Way -> {}
+                EntityType.Relation -> relations.add(container.entity as OsmRelation)
+            }
+        }
+
+        return OsmData(nodes, ways, relations)
+    }
+
+    private fun OsmWay.highwayType(): String? {
+        for (i in 0 until numberOfTags) {
+            val tag = getTag(i)
+            if (tag.key == "highway") {
+                return tag.value
+            }
+        }
+
+        return null
+    }
+
+    private fun OsmWay.nodeIds(): List<Long> {
+        val nodes = mutableListOf<Long>()
+
+        for (i in 0 until numberOfNodes) {
+            nodes.add(getNodeId(i))
+        }
+
+        return nodes
     }
 }
 
