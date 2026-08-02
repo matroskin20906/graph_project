@@ -14,26 +14,39 @@ data class Vertex(val id: Long, val x: Double, val y: Double) {
 class Graph(data: OsmData) {
     val distanceCalculator = PreciseDistanceCalculator()
 
-    val edges = data.ways().flatMap { way ->
-        val oneway = way.oneway()
-        buildList {
-            for (i in 1 until way.numberOfNodes) {
-                val fromId = way.getNodeId(i - 1)
-                val toId = way.getNodeId(i)
-                val weight = distanceCalculator.distance(data.node(fromId), data.node(toId))
-
-                require(weight > 0.0) { "weight must be positive" }
-
-                add(Edge(fromId, toId, weight))
-                if (!oneway) {
-                    add(Edge(toId, fromId, weight))
-                }
-            }
-        }
-    }
     val vertexes = data.nodes()
         .map { node -> Vertex(node.id, node.longitude, node.latitude) }
         .associateBy { it.id }
+    val edges: List<Edge>
+
+    init {
+        val mutableEdges = mutableListOf<Edge>()
+        for (way in data.ways()) {
+            val oneway = way.oneway()
+
+            for (i in 1 until way.numberOfNodes) {
+                val fromId = way.getNodeId(i - 1)
+                val toId = way.getNodeId(i)
+
+                val weight = distanceCalculator.distance(
+                    data.node(fromId),
+                    data.node(toId)
+                )
+
+                require(weight > 0.0) {
+                    "Invalid edge weight $weight for $fromId -> $toId"
+                }
+
+                mutableEdges.add(Edge(fromId, toId, weight))
+
+                if (!oneway) {
+                    mutableEdges.add(Edge(toId, fromId, weight))
+                }
+            }
+        }
+
+        edges = mutableEdges.toList()
+    }
 
     fun dfs() {
         TODO("implement")
