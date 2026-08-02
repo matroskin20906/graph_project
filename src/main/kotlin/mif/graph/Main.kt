@@ -18,8 +18,8 @@ class GraphProcessor : CliktCommand() {
     private val output by option("-o", "--output")
 
     override fun run() {
-        val graph = Graph.from(RoutingOsmFileReader().read(input))
-        println(graph.vertexes)
+        val graph = OsmRoadGraph.from(RoutingOsmFileReader().read(input))
+        println(graph.vertices)
         println(graph.edges)
     }
 }
