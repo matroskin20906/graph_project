@@ -10,6 +10,7 @@ import de.topobyte.osm4j.core.model.iface.OsmRelation
 import de.topobyte.osm4j.core.model.iface.OsmWay
 import de.topobyte.osm4j.pbf.seq.PbfIterator
 import mif.graph.osmdata.OsmData
+import mif.graph.osmdata.nodeIds
 import java.io.FileInputStream
 
 class GraphProcessor : CliktCommand() {
@@ -17,7 +18,9 @@ class GraphProcessor : CliktCommand() {
     private val output by option("-o", "--output")
 
     override fun run() {
-        println(RoutingOsmFileReader().read(input))
+        val graph = Graph(RoutingOsmFileReader().read(input))
+        println(graph.vertexes)
+        println(graph.edges)
     }
 }
 
@@ -45,8 +48,11 @@ class StandardOsmFileReader : OsmFileReader {
 
 class RoutingOsmFileReader : OsmFileReader {
     override fun read(file: String): OsmData {
-        val ways = mutableListOf<OsmWay>()
-        val neededNodes = mutableSetOf<Long>()
+        @Suppress("MagicNumber")
+        val ways = ArrayList<OsmWay>(500_000)
+        @Suppress("MagicNumber")
+        val neededNodes = HashSet<Long>(1_000_000)
+
         PbfIterator(FileInputStream(file), true).forEach { container ->
             when (container.type) {
                 EntityType.Way -> {
@@ -87,16 +93,6 @@ class RoutingOsmFileReader : OsmFileReader {
         }
 
         return null
-    }
-
-    private fun OsmWay.nodeIds(): List<Long> {
-        val nodes = mutableListOf<Long>()
-
-        for (i in 0 until numberOfNodes) {
-            nodes.add(getNodeId(i))
-        }
-
-        return nodes
     }
 }
 

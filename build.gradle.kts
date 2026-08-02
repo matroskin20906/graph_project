@@ -21,11 +21,20 @@ detekt {
 
 dependencies {
     testImplementation(kotlin("test"))
+
+    // osm data
     implementation("de.topobyte:osm4j-core:1.4.1")
     implementation("de.topobyte:osm4j-pbf:1.4.1")
     implementation("de.topobyte:osm4j-xml:1.4.1")
+
+    // named arguments
     implementation("com.github.ajalt.clikt:clikt:5.0.3")
 
+    // projection
+    implementation("org.locationtech.proj4j:proj4j:1.2.3")
+    implementation("org.locationtech.proj4j:proj4j-epsg:1.2.3")
+
+    // detekt
     detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.23.8")
 }
 
