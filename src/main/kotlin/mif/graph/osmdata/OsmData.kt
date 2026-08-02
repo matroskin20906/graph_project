@@ -157,7 +157,7 @@ fun OsmWay.oneway(): Boolean {
     for (i in 0 until numberOfTags) {
         val tag = getTag(i)
         if (tag.key == "oneway") {
-            return tag.value == "true"
+            return tag.value == "yes"
         }
     }
 
