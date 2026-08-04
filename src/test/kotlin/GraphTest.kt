@@ -1,4 +1,3 @@
-import mif.graph.Edge
 import mif.graph.IllegalVertex
 import mif.graph.RoadGraph
 import mif.graph.SimpleEdge

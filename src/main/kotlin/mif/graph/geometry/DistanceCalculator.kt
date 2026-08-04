@@ -7,7 +7,7 @@ import org.locationtech.proj4j.ProjCoordinate
 import kotlin.math.pow
 import kotlin.math.sqrt
 
-class PreciseDistanceCalculator(src: String? = null, dst: String? = null): DistanceCalculator {
+class PreciseDistanceCalculator(src: String? = null, dst: String? = null) : DistanceCalculator {
     companion object {
         const val DEFAULT_SRC = "EPSG:4326" // WGS 84
         const val DEFAULT_DST = "EPSG:3059" // LKS 92

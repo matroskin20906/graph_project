@@ -11,7 +11,12 @@ import de.topobyte.osm4j.pbf.seq.PbfWriter
 import mif.graph.Edge
 import mif.graph.RoadGraph
 import mif.graph.SimpleEdge
+import mif.graph.WeightedRoadGraph
 import mif.graph.bridges
+import mif.graph.dijkstra
+import mif.graph.kruskals
+import kotlin.math.roundToInt
+import kotlin.time.Clock
 
 class OsmData(nodes: List<OsmNode>, ways: List<OsmWay>, relations: List<OsmRelation>) {
     private val nodesMap = nodes.associateBy { it.id }
@@ -24,17 +29,43 @@ class OsmData(nodes: List<OsmNode>, ways: List<OsmWay>, relations: List<OsmRelat
     fun way(id: Long) = waysMap[id] ?: throw OsmWayNotFound(id)
     fun relation(id: Long) = relationsMap[id]
 
+    fun randomNode() = nodesMap.values.random()
+
     fun nodes() = nodesMap.values
     fun ways() = waysMap.values
     fun relations() = relationsMap.values
 
-    fun calcBridges() =
+    fun calcKruskals() = markEdges(
+        Tag("is_forest", "true"),
+        WeightedRoadGraph.from(this)
+            .kruskals()
+            .toHashSet(),
+    )
+
+    fun calcDijkstra(start: Long, finish: Long) {
+        val buildGraphStart = Clock.System.now()
+        val graph = WeightedRoadGraph.from(this)
+        val buildGraphEnd = Clock.System.now()
+        println("Graph build work time: ${(buildGraphEnd - buildGraphStart)}")
+
+        val dijkstraStart = Clock.System.now()
+        val result = graph.dijkstra(start, finish)
+        val dijkstraEnd = Clock.System.now()
+        println("Dijkstra work time: ${(dijkstraEnd - dijkstraStart)}")
+        println("Min distance: ${result.distance.roundToInt()}")
+
         markEdges(
-            Tag("is_bridge", "true"),
-            RoadGraph.from(this)
-                .bridges()
-                .toHashSet(),
+            Tag("is_road", "true"),
+            result.route.toHashSet(),
         )
+    }
+
+    fun calcBridges() = markEdges(
+        Tag("is_bridge", "true"),
+        RoadGraph.from(this)
+            .bridges()
+            .toHashSet(),
+    )
 
     private fun markEdges(tag: Tag, toMark: Set<Edge>) {
         val affectedWays = mutableListOf<Pair<Long, List<Edge>>>()
@@ -59,6 +90,7 @@ class OsmData(nodes: List<OsmNode>, ways: List<OsmWay>, relations: List<OsmRelat
             }
         }
 
+        println("affected ways: ${affectedWays.size}")
         for ((wayId, edgesToMark) in affectedWays) {
             val splitWays = way(wayId).splitWithTag(edgesToMark, tag)
 
@@ -95,22 +127,22 @@ class OsmData(nodes: List<OsmNode>, ways: List<OsmWay>, relations: List<OsmRelat
             val to = getNodeId(i)
             val edge = SimpleEdge(from, to)
 
-            if (edge in edgesSet) {
-                // Finish accumulated non-spec section.
-                emit(current, mark = false)
-
-                // Emit the spec itself.
-                val nodes = TLongArrayList(2)
-                nodes.add(from)
-                nodes.add(to)
-                emit(nodes, mark = true)
-
-                // Start next section from the spec end.
-                current.resetQuick()
+            if (edge !in edgesSet) {
                 current.add(to)
-            } else {
-                current.add(to)
+                continue
             }
+            // Finish accumulated non-spec section.
+            emit(current, mark = false)
+
+            // Emit the spec itself.
+            val nodes = TLongArrayList(2)
+            nodes.add(from)
+            nodes.add(to)
+            emit(nodes, mark = true)
+
+            // Start next section from the spec end.
+            current.resetQuick()
+            current.add(to)
         }
 
         emit(current, mark = false)
@@ -126,11 +158,6 @@ class OsmData(nodes: List<OsmNode>, ways: List<OsmWay>, relations: List<OsmRelat
     }
 
     override fun toString() = "Nodes: ${nodesMap.size}, Ways: ${waysMap.size}, Relations: ${relationsMap.size}"
-}
-
-private fun TLongArrayList.add(edge: Edge) {
-    add(edge.from)
-    add(edge.to)
 }
 
 private fun OsmWay.tags(): List<OsmTag> {

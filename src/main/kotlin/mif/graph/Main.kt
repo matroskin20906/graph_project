@@ -2,8 +2,10 @@ package mif.graph
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.main
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
+import com.github.ajalt.clikt.parameters.options.validate
 import de.topobyte.osm4j.core.model.iface.EntityType
 import de.topobyte.osm4j.core.model.iface.OsmNode
 import de.topobyte.osm4j.core.model.iface.OsmRelation
@@ -14,14 +16,26 @@ import mif.graph.osmdata.OsmData
 import mif.graph.osmdata.nodeIds
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class GraphProcessor : CliktCommand() {
     private val input by option("-i", "--input").required()
     private val output by option("-o", "--output").required()
+    private val dijkstra by option("-d", "--dijkstra").flag().validate {
+        if (to == null || from == null) {
+            fail("--from and --to are required for dijkstra")
+        }
+    }
+    private val from: String? by option("-f", "--from")
+    private val to: String? by option("-t", "--to")
+
 
     override fun run() {
         val data = RoutingOsmFileReader().read(input)
-        data.calcBridges()
+        if (dijkstra) {
+            data.calcDijkstra(from!!.toLong(), to!!.toLong())
+        }
         data.write(PbfWriter(FileOutputStream(output), true))
     }
 }
@@ -52,6 +66,7 @@ class RoutingOsmFileReader : OsmFileReader {
     override fun read(file: String): OsmData {
         @Suppress("MagicNumber")
         val ways = ArrayList<OsmWay>(500_000)
+
         @Suppress("MagicNumber")
         val neededNodes = HashSet<Long>(1_000_000)
 

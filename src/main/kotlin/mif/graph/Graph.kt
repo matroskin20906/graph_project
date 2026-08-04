@@ -5,6 +5,8 @@ import mif.graph.geometry.PreciseDistanceCalculator
 import mif.graph.osmdata.OsmData
 import mif.graph.osmdata.oneway
 import java.util.LinkedList
+import java.util.PriorityQueue
+import kotlin.time.Clock
 
 interface Graph {
     val vertices: List<Vertex>
@@ -32,10 +34,15 @@ data class SimpleEdge(
         other != null && other is SimpleEdge && ((from == other.from && to == other.to) || (from == other.to && to == other.from))
 
     override fun hashCode(): Int {
-        var result = from.hashCode()
-        result = 31 * result + to.hashCode()
+        val min = minOf(from, to)
+        val max = maxOf(from, to)
+
+        var result = min.hashCode()
+        result = 31 * result + max.hashCode()
         return result
     }
+
+    override fun toString() = "$from -> $to"
 }
 
 data class WeightedEdge(
@@ -57,15 +64,17 @@ data class Vertex(val id: Long) {
     override fun toString() = "$id"
 }
 
+private val Graph.neighbours get() = edges
+    .groupBy { it.from }
+    .mapValues { (_, edges) -> edges.map { it.to } }
+
 fun Graph.bfs(start: Long? = null): List<Vertex> {
     val vertices = vertices.associateBy { it.id }
     if (start != null && vertices[start] == null) {
         throw IllegalVertex(start)
     }
 
-    val neighbours = edges
-        .groupBy { it.from }
-        .mapValues { (_, edges) -> edges.map { it.to } }
+    val neighbours = neighbours
     val visited = mutableSetOf<Long>()
     val startVertex = start ?: vertices.keys.random()
 
@@ -106,9 +115,7 @@ fun Graph.dfs(start: Long? = null): List<Vertex> {
         throw IllegalVertex(start)
     }
 
-    val neighbours = edges
-        .groupBy { it.from }
-        .mapValues { (_, edges) -> edges.map { it.to } }
+    val neighbours = neighbours
     val visited = mutableSetOf<Long>()
     val startVertex = start ?: vertices.keys.random()
 
@@ -139,18 +146,56 @@ fun Graph.bridges(): List<Edge> {
     TODO()
 }
 
+data class WeightedVertex(val id: Long, val weight: Double)
+
+data class DijkstraResult(val distance: Double, val route: List<Edge>)
+
 /** @throws IllegalVertex **/
-fun WeightedGraph.dijkstra(start: Long, end: Long): List<Edge> {
+fun WeightedGraph.dijkstra(start: Long, end: Long): DijkstraResult {
     val vertices = vertices.associateBy { it.id }
-    if (vertices[start] == null) {
-        throw IllegalVertex(start)
+    val s = vertices[start] ?: throw IllegalVertex(start)
+    val t = vertices[end] ?: throw IllegalVertex(end)
+    val distance = HashMap<Long, Double>(vertices.size)
+    val parent = HashMap<Long, Long?>(vertices.size)
+    val weight = edges.associate { (it.from to it.to) to it.weight }
+
+    vertices.forEach { vertex ->
+        distance[vertex.key] = Double.POSITIVE_INFINITY
+        parent[vertex.key] = null
     }
 
-    if (vertices[end] == null) {
-        throw IllegalVertex(start)
+    val queue = PriorityQueue<WeightedVertex>(compareBy { it.weight })
+    distance[s.id] = 0.0
+    queue.add(WeightedVertex(s.id, 0.0))
+    val neighbours = neighbours
+
+    while (queue.isNotEmpty()) {
+        val current = queue.poll()
+
+        if (current.id == t.id) break
+
+        neighbours[current.id]?.forEach { neighbor ->
+            if (distance[current.id]!! + weight[current.id to neighbor]!! < distance[neighbor]!!) {
+                distance[neighbor] = distance[current.id]!! + weight[current.id to neighbor]!!
+                parent[neighbor] = current.id
+                queue.add(WeightedVertex(neighbor, distance[neighbor]!!))
+            }
+        }
     }
 
-    TODO()
+    val reversedRouteIds = mutableListOf<Long>()
+    var current: Long? = t.id
+    while (current != null) {
+        reversedRouteIds.add(current)
+        current = parent[current]
+    }
+    val routeIds = reversedRouteIds.reversed()
+    val route = mutableListOf<Edge>()
+    for (i in 1 until routeIds.size) {
+        route.add(SimpleEdge(routeIds[i - 1], routeIds[i]))
+    }
+
+    return DijkstraResult(distance[t.id]!!, route)
 }
 
 // here we should think about graph as unoriented
@@ -232,7 +277,6 @@ class WeightedRoadGraph(
     }
 }
 
-
 class OsmRoadGraph(
     override val vertices: List<Vertex>,
     override val edges: List<WeightedEdge>,
@@ -251,4 +295,4 @@ class OsmRoadGraph(
     }
 }
 
-class IllegalVertex(vertex: Long): RuntimeException("Vertex $vertex is not in the graph.")
+class IllegalVertex(vertex: Long) : RuntimeException("Vertex $vertex is not in the graph.")
